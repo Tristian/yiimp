@@ -79,15 +79,16 @@ function doLiveCoinTrading($quick = false)
 					continue;
 				}
 
-				$market->balance = arraySafeVal($balance, 'Available', 0.0);
-				$market->ontrade = arraySafeVal($balance, 'Balance') - $market->balance;
-				$market->balancetime = time();
-				$address = arraySafeVal($balance, 'CryptoAddress');
-				if (!empty($address) && $market->deposit_address != $address) {
-					debuglog("$exchange: {$coin->symbol} deposit address updated");
-					$market->deposit_address = $address;
+				if ($balance->type == 'available') {
+					$market->balance = arraySafeVal($balance, 'value', 0.0);
+					$market->balancetime = time();
+					$market->save();
+				} elseif ($balance->type == 'trade') {
+					$market->ontrade = arraySafeVal($balance, 'value', 0.0);
+					$market->balancetime = time();
+					$market->save();
 				}
-				$market->save();
+
 			}
 		}
 	}
