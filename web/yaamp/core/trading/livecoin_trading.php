@@ -12,7 +12,7 @@ function doLiveCoinCancelOrder($pair = false, $id = false, $live = false)
 
 	$res = $livecoin->cancelLimitOrder($pair, $id);
 
-	if ($res->success == 'true') {
+	if ($res->success === TRUE) {
 		$db_order = getdbosql(
 			'db_orders',
 			'market=:market AND uuid=:uuid',
@@ -117,21 +117,21 @@ function doLiveCoinTrading($quick = false)
 		sleep(1);
 		$orders = $livecoin->getClientOrders($pair, 'OPEN');
 
-		if (isset($orders->success) || !isset($orders->data)) {
+		if (!isset($orders->data)) {
 			continue;
 		}
 
 		foreach ($orders->data as $order) {
-			$uuid = $order['id'];
-			$pair = $order['currencyPair'];
+			$uuid = $order->id;
+			$pair = $order->currencyPair;
 			sleep(1);
 			$ticker = $livecoin->getTickerInfo($pair);
 
-			if (!$ticker) {
+			if (!is_object($ticker) || !$order->price) {
 				continue;
 			}
 
-			if ($order['price'] > $cancel_ask_pct*$ticker->best_ask || $flushall) {
+			if ($order->price > $cancel_ask_pct*$ticker->best_ask || $flushall) {
 				sleep(1);
 				doLiveCoinCancelOrder($pair, $uuid, $livecoin);
 			} else {
@@ -148,10 +148,10 @@ function doLiveCoinTrading($quick = false)
 				$db_order = new db_orders;
 				$db_order->market = 'livecoin';
 				$db_order->coinid = $coin->id;
-				$db_order->amount = $order['quantity'];
-				$db_order->price = $order['price'];
-				$db_order->ask = $ticker['best_ask'];
-				$db_order->bid = $ticker['best_sell'];
+				$db_order->amount = $order->quantity;
+				$db_order->price = $order->price;
+				$db_order->ask = $ticker->best_ask;
+				$db_order->bid = $ticker->best_sell;
 				$db_order->uuid = $uuid;
 				$db_order->created = time();
 				$db_order->save();
@@ -161,7 +161,7 @@ function doLiveCoinTrading($quick = false)
 		foreach ($list as $db_order) {
 			$found = false;
 			foreach ($orders->data as $order) {
-				$uuid = $order['id'];
+				$uuid = $order->id;
 				if ($uuid == $db_order->uuid) {
 					$found = true;
 					break;
@@ -188,7 +188,7 @@ function doLiveCoinTrading($quick = false)
 
 		$amount = $balance->value;
 		$symbol = $balance->currency;
-		if (!$balance || $symbol == 'BTC') {
+		if ($symbol == 'BTC') {
 			continue;
 		}
 
@@ -216,9 +216,7 @@ function doLiveCoinTrading($quick = false)
 
 		$pair = "$symbol/BTC";
 		$ticker = $livecoin->getTickerInfo($pair);
-
-		if(!isset($tickers[$pair])) continue;
-
+		if(!(isset($ticker->best_bid) && isset($ticker->best_ask))) continue;
 		if($coin->sellonbid)
 			$sellprice = bitcoinvaluetoa($ticker->best_bid);
 		else
@@ -257,7 +255,7 @@ function doLiveCoinTrading($quick = false)
 		sleep(1);
 		$res = $livecoin->withdrawCoin($amount, 'BTC', $btcaddr);
 		debuglog("$exchange: withdraw ".json_encode($res));
-		if (!$res->fault) {
+		if (is_object($res)) {
 			$withdraw = new db_withdraws;
 			$withdraw->market = 'livecoin';
 			$withdraw->address = $btcaddr;
