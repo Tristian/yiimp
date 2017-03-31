@@ -117,11 +117,13 @@ function doLiveCoinTrading($quick = false)
 		sleep(1);
 		$orders = $livecoin->getClientOrders($pair, 'OPEN');
 
-		if (!isset($orders->data)) {
-			continue;
+		if (isset($orders->data)) {
+			$order_data = $orders->data;
+		} else {
+			$order_data = [];
 		}
 
-		foreach ($orders->data as $order) {
+		foreach ($order_data as $order) {
 			$uuid = $order->id;
 			$pair = $order->currencyPair;
 			sleep(1);
@@ -160,7 +162,7 @@ function doLiveCoinTrading($quick = false)
 		$list = getdbolist('db_orders', "coinid=$coin->id and market='livecoin'");
 		foreach ($list as $db_order) {
 			$found = false;
-			foreach ($orders->data as $order) {
+			foreach ($order_data as $order) {
 				$uuid = $order->id;
 				if ($uuid == $db_order->uuid) {
 					$found = true;
@@ -176,7 +178,6 @@ function doLiveCoinTrading($quick = false)
 	sleep(2);
 
 	/* Update balances  and sell */
-	$balances = $livecoin->getBalances();
 	if (!$balances) {
 		return;
 	}
